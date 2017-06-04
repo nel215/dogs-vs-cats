@@ -8,6 +8,7 @@ from sklearn.preprocessing import LabelBinarizer
 from chainer import Variable
 import chainer.links as L
 import chainer.functions as F
+from chainer.optimizers import SGD
 
 
 if __name__ == '__main__':
@@ -22,6 +23,9 @@ if __name__ == '__main__':
         xp = np
         model = dogs_vs_cats.model.VGG16()
 
+    optimizer = SGD()
+    optimizer.setup(model)
+
     images, labels = dogs_vs_cats.load_images('./dataset/train/')
     label_binarizer = LabelBinarizer()
     labels = label_binarizer.fit_transform(labels)
@@ -35,4 +39,6 @@ if __name__ == '__main__':
     y = Variable(xp.array(labels[perm]))
     pred = model(X)
     loss = F.sigmoid_cross_entropy(pred, y)
+    print(loss.data)
     loss.backward()
+    optimizer.update()
