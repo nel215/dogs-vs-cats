@@ -25,5 +25,6 @@ if __name__ == '__main__':
     images, labels = dogs_vs_cats.load_images('./dataset/train/')
     model = VGG16()
 
-    X = Variable(xp.array(list(map(L.model.vision.vgg.prepare, images)), dtype=xp.float32))
+    X = Variable(xp.array(
+        list(map(L.model.vision.vgg.prepare, images)), dtype=xp.float32))
     pred = model(X[:32])
