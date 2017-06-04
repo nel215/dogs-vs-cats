@@ -8,7 +8,7 @@ class VGG16(Chain):
     def __init__(self):
         super(VGG16, self).__init__(
             vgg16=L.VGG16Layers(),
-            fc8=L.Linear(4096, 2),
+            fc8=L.Linear(4096, 1),
         )
 
     def __call__(self, x):

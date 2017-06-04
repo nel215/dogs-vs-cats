@@ -4,6 +4,7 @@ import dogs_vs_cats
 import dogs_vs_cats.model
 import argparse
 import cupy
+from sklearn.preprocessing import LabelBinarizer
 from chainer import Variable
 import chainer.links as L
 
@@ -21,6 +22,9 @@ if __name__ == '__main__':
         model = dogs_vs_cats.model.VGG16()
 
     images, labels = dogs_vs_cats.load_images('./dataset/train/')
+    label_binarizer = LabelBinarizer()
+    labels = label_binarizer.fit_transform(labels)
+    labels = labels.astype(np.int32)
 
     X = Variable(xp.array(
         list(map(L.model.vision.vgg.prepare, images)), dtype=xp.float32))
