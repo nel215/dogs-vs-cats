@@ -7,6 +7,7 @@ import cupy
 from sklearn.preprocessing import LabelBinarizer
 from chainer import Variable
 import chainer.links as L
+import chainer.functions as F
 
 
 if __name__ == '__main__':
@@ -26,6 +27,12 @@ if __name__ == '__main__':
     labels = label_binarizer.fit_transform(labels)
     labels = labels.astype(np.int32)
 
-    X = Variable(xp.array(
-        list(map(L.model.vision.vgg.prepare, images)), dtype=xp.float32))
-    pred = model(X[:32])
+    images = np.array(
+        list(map(L.model.vision.vgg.prepare, images)), dtype=np.float32)
+    n = len(images)
+    perm = np.random.permutation(n)[:48]
+    X = Variable(xp.array(images[perm]))
+    y = Variable(xp.array(labels[perm]))
+    pred = model(X)
+    loss = F.sigmoid_cross_entropy(pred, y)
+    loss.backward()
