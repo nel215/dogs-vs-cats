@@ -60,10 +60,10 @@ def train_vgg16(gpu):
                 y = xp.array(y_train[perm[start:end]]).reshape((-1, 1))
                 pred = model(X)
                 loss = F.sigmoid_cross_entropy(pred, y)
-                # train_loss.append(loss.data.copy())
+                train_loss.append(float(loss.data.copy()))
                 loss.backward()
                 optimizer.update()
-            print("train loss:", train_loss)
+            print("train loss:", np.mean(train_loss))
 
             # validation
             chainer.using_config('train', False)
