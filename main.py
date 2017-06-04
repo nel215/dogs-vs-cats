@@ -23,7 +23,7 @@ if __name__ == '__main__':
         xp = np
         model = dogs_vs_cats.model.VGG16()
 
-    optimizer = SGD()
+    optimizer = SGD(lr=0.001)
     optimizer.setup(model)
 
     images, labels = dogs_vs_cats.load_images('./dataset/train/')
@@ -34,11 +34,14 @@ if __name__ == '__main__':
     images = np.array(
         list(map(L.model.vision.vgg.prepare, images)), dtype=np.float32)
     n = len(images)
-    perm = np.random.permutation(n)[:48]
-    X = Variable(xp.array(images[perm]))
-    y = Variable(xp.array(labels[perm]))
-    pred = model(X)
-    loss = F.sigmoid_cross_entropy(pred, y)
-    print(loss.data)
-    loss.backward()
-    optimizer.update()
+
+    for epoch in range(100):
+        perm = np.random.permutation(n)[:48]
+        X = Variable(xp.array(images[perm]))
+        y = Variable(xp.array(labels[perm]))
+        model.cleargrads()
+        pred = model(X)
+        loss = F.sigmoid_cross_entropy(pred, y)
+        print(loss.data)
+        loss.backward()
+        optimizer.update()
