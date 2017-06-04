@@ -74,7 +74,6 @@ def train_vgg16(gpu):
                 pred[start:end] = model(xp.array(X_test[start:end])).data
             loss = F.sigmoid_cross_entropy(pred, xp.array(y_test).reshape((-1, 1)))
             print("test loss:", loss.data)
-            break
 
 
     images, labels = dogs_vs_cats.load_images('./dataset/train/')
