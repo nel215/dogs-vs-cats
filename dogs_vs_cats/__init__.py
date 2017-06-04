@@ -23,8 +23,9 @@ def load_images(img_dir):
         label = fname.split('.')[0]
         fpath = os.path.join(img_dir, fname)
         img = Image.open(fpath)
-        images.append(img)
+        images.append(img.copy())
         labels.append(binarize_label(label))
+        img.close()
 
     return images, labels
 
