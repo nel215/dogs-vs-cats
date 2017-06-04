@@ -64,7 +64,7 @@ def train_vgg16(gpu):
             chainer.using_config('train', False)
             pred = xp.zeros((n_test), dtype=np.float32)
             for start in range(0, n_test, batch_size):
-                end = min(n_test, (start + 1) * batch_size)
+                end = min(n_test, start + batch_size)
                 pred[start:end] = model(xp.array(X_test[start:end])).data
             loss = F.sigmoid_cross_entropy(pred, xp.array(y_test))
             print("test loss:", loss.data)
