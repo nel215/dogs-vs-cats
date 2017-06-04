@@ -7,7 +7,6 @@ import chainer.links as L
 import chainer.functions as F
 import dogs_vs_cats.model
 from PIL import Image
-from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import train_test_split
 from chainer import Variable
 from chainer.optimizers import SGD
@@ -17,7 +16,7 @@ def load_images(img_dir):
     '''
     Returns:
         - images: Array of PIL.image
-        - labels: Array of string
+        - labels: Array of int
     '''
     images, labels = [], []
     for fname in np.random.permutation(os.listdir(img_dir))[:1000]:
@@ -25,9 +24,13 @@ def load_images(img_dir):
         fpath = os.path.join(img_dir, fname)
         img = Image.open(fpath)
         images.append(img)
-        labels.append(label)
+        labels.append(binarize_label(label))
 
     return images, labels
+
+
+def binarize_label(label):
+    return 1 if label == 'dog' else 0
 
 
 def train_vgg16(gpu):
@@ -42,9 +45,7 @@ def train_vgg16(gpu):
     optimizer.setup(model)
 
     images, labels = dogs_vs_cats.load_images('./dataset/train/')
-    label_binarizer = LabelBinarizer()
-    labels = label_binarizer.fit_transform(labels)
-    labels = labels.astype(np.int32)
+    labels = np.array(labels, dtype=np.int32).reshape((len(labels), 1))
 
     images = np.array(
         list(map(L.model.vision.vgg.prepare, images)), dtype=np.float32)
