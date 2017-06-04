@@ -11,7 +11,7 @@ def load_images(img_dir):
         - labels: Array of string
     '''
     images, labels = [], []
-    for fname in np.random.permutation(os.listdir(img_dir))[:100]:
+    for fname in np.random.permutation(os.listdir(img_dir))[:1000]:
         label = fname.split('.')[0]
         fpath = os.path.join(img_dir, fname)
         img = Image.open(fpath)
