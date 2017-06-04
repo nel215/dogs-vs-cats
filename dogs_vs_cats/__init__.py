@@ -7,7 +7,7 @@ import chainer.links as L
 import chainer.functions as F
 import dogs_vs_cats.model
 from PIL import Image
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold
 from chainer import Variable
 from chainer.optimizers import SGD
 
@@ -34,41 +34,51 @@ def binarize_label(label):
 
 
 def train_vgg16(gpu):
-    if gpu is not None:
-        xp = cupy
-        model = dogs_vs_cats.model.VGG16().to_gpu()
-    else:
-        xp = np
-        model = dogs_vs_cats.model.VGG16()
+    def train(X_train, X_test, y_train, y_test):
+        if gpu is not None:
+            xp = cupy
+            model = dogs_vs_cats.model.VGG16().to_gpu()
+        else:
+            xp = np
+            model = dogs_vs_cats.model.VGG16()
 
-    optimizer = SGD(lr=0.001)
-    optimizer.setup(model)
+        optimizer = SGD(lr=0.001)
+        optimizer.setup(model)
+
+        batch_size = 48
+        n = len(X_train)
+        for epoch in range(100):
+            chainer.using_config('train', True)
+            perm = np.random.permutation(n)[:batch_size]
+            X = Variable(xp.array(X_train[perm]))
+            y = Variable(xp.array(y_train[perm]).reshape((batch_size, 1)))
+            model.cleargrads()
+            pred = model(X)
+            loss = F.sigmoid_cross_entropy(pred, y)
+            print("train loss:", loss.data)
+            loss.backward()
+            optimizer.update()
+
+            # validation
+            n_test = len(X_test)
+            chainer.using_config('train', False)
+            pred = xp.zeros((n_test), dtype=np.float32)
+            for start in range(0, n_test, batch_size):
+                end = min(n_test, (start + 1) * batch_size)
+                pred[start:end] = model(xp.array(X_test[start:end])).data
+            loss = F.sigmoid_cross_entropy(pred, xp.array(y_test))
+            print("test loss:", loss.data)
+            break
+
 
     images, labels = dogs_vs_cats.load_images('./dataset/train/')
-    labels = np.array(labels, dtype=np.int32).reshape((len(labels), 1))
+    labels = np.array(labels, dtype=np.int32)
 
     images = np.array(
         list(map(L.model.vision.vgg.prepare, images)), dtype=np.float32)
 
-    X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.05, random_state=215)
-    n = len(X_train)
-
-    for epoch in range(100):
-        chainer.using_config('train', True)
-        perm = np.random.permutation(n)[:48]
-        X = Variable(xp.array(X_train[perm]))
-        y = Variable(xp.array(y_train[perm]))
-        model.cleargrads()
-        pred = model(X)
-        loss = F.sigmoid_cross_entropy(pred, y)
-        print("train loss:", loss.data)
-        loss.backward()
-        optimizer.update()
-
-        # validation
-        chainer.using_config('train', False)
-        X = Variable(xp.array(X_test))
-        y = Variable(xp.array(y_test))
-        pred = model(X)
-        loss = F.sigmoid_cross_entropy(pred, y)
-        print("test loss:", loss.data)
+    skf = StratifiedKFold(n_splits=3, random_state=215)
+    for train_idx, test_idx in skf.split(images, labels):
+        X_train, X_test = images[train_idx], images[test_idx]
+        y_train, y_test = labels[train_idx], labels[test_idx]
+        train(X_train, X_test, y_train, y_test)
