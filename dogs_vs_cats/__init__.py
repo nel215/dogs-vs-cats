@@ -35,6 +35,9 @@ def binarize_label(label):
 
 def train_vgg16(gpu):
     def train(X_train, X_test, y_train, y_test):
+        n_train = len(X_train)
+        n_test = len(X_test)
+
         if gpu is not None:
             xp = cupy
             model = dogs_vs_cats.model.VGG16().to_gpu()
@@ -46,21 +49,23 @@ def train_vgg16(gpu):
         optimizer.setup(model)
 
         batch_size = 48
-        n = len(X_train)
         for epoch in range(100):
             chainer.using_config('train', True)
-            perm = np.random.permutation(n)[:batch_size]
-            X = Variable(xp.array(X_train[perm]))
-            y = Variable(xp.array(y_train[perm]).reshape((batch_size, 1)))
-            model.cleargrads()
-            pred = model(X)
-            loss = F.sigmoid_cross_entropy(pred, y)
-            print("train loss:", loss.data)
-            loss.backward()
-            optimizer.update()
+            perm = np.random.permutation(n_train)
+            train_loss = []
+            for start in range(0, n_train, batch_size):
+                end = min(n_train, start + batch_size)
+                model.cleargrads()
+                X = Variable(xp.array(X_train[perm[start:end]]))
+                y = xp.array(y_train[perm[start:end]]).reshape((-1, 1))
+                pred = model(X)
+                loss = F.sigmoid_cross_entropy(pred, y)
+                # train_loss.append(loss.data.copy())
+                loss.backward()
+                optimizer.update()
+            print("train loss:", train_loss)
 
             # validation
-            n_test = len(X_test)
             chainer.using_config('train', False)
             pred = xp.zeros((n_test), dtype=np.float32)
             for start in range(0, n_test, batch_size):
