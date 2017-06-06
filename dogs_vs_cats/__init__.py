@@ -1,6 +1,7 @@
 # coding: utf-8
 import os
 import numpy as np
+import pandas as pd
 import cupy
 import chainer
 import chainer.links as L
@@ -16,9 +17,9 @@ def load_images(img_dir, trial):
     '''
     Returns:
         - images: Array of PIL.image
-        - labels: Array of int
+        - metadata: pandas.DataFrame
     '''
-    images, labels = [], []
+    images, metadata = [], []
     files = np.random.permutation(os.listdir(img_dir))
     if trial:
         files = files[:48 * 3]
@@ -27,10 +28,12 @@ def load_images(img_dir, trial):
         fpath = os.path.join(img_dir, fname)
         img = Image.open(fpath)
         images.append(img.copy())
-        labels.append(binarize_label(label))
+        metadata.append([binarize_label(label), fname])
         img.close()
 
-    return images, labels
+    metadata = pd.DataFrame(metadata, columns=['label', 'filename'])
+
+    return images, metadata
 
 
 def binarize_label(label):
@@ -84,8 +87,8 @@ def train_vgg16(n_epoch, gpu, trial):
             pred = chainer.cuda.to_cpu(pred)
         return pred
 
-    images, labels = dogs_vs_cats.load_images('./dataset/train/', trial)
-    labels = np.array(labels, dtype=np.int32)
+    images, metadata = dogs_vs_cats.load_images('./dataset/train/', trial)
+    labels = np.array(metadata['label'], dtype=np.int32)
 
     images = np.array(
         list(map(L.model.vision.vgg.prepare, images)), dtype=np.float32)
@@ -97,4 +100,6 @@ def train_vgg16(n_epoch, gpu, trial):
         y_train, y_test = labels[train_idx], labels[test_idx]
         pred = train(X_train, X_test, y_train, y_test)
         cv_pred[test_idx] = pred.reshape(len(pred))
-    print(cv_pred)
+    metadata['vgg_pred'] = cv_pred
+
+    return metadata

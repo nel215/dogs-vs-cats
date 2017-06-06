@@ -12,4 +12,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     n_epoch = 20
-    dogs_vs_cats.train_vgg16(n_epoch, args.gpu, args.trial)
+    vgg_result = dogs_vs_cats.train_vgg16(n_epoch, args.gpu, args.trial)
