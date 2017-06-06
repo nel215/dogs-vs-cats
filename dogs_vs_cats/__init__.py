@@ -12,14 +12,17 @@ from chainer import Variable
 from chainer.optimizers import SGD
 
 
-def load_images(img_dir):
+def load_images(img_dir, trial):
     '''
     Returns:
         - images: Array of PIL.image
         - labels: Array of int
     '''
     images, labels = [], []
-    for fname in np.random.permutation(os.listdir(img_dir))[:1000]:
+    files = np.random.permutation(os.listdir(img_dir))
+    if trial:
+        files = files[:48 * 3]
+    for fname in files:
         label = fname.split('.')[0]
         fpath = os.path.join(img_dir, fname)
         img = Image.open(fpath)
@@ -34,7 +37,7 @@ def binarize_label(label):
     return 1 if label == 'dog' else 0
 
 
-def train_vgg16(gpu):
+def train_vgg16(gpu, trial):
     def train(X_train, X_test, y_train, y_test):
         n_train = len(X_train)
         n_test = len(X_test)
@@ -76,7 +79,7 @@ def train_vgg16(gpu):
             print("test loss:", loss.data)
 
 
-    images, labels = dogs_vs_cats.load_images('./dataset/train/')
+    images, labels = dogs_vs_cats.load_images('./dataset/train/', trial)
     labels = np.array(labels, dtype=np.int32)
 
     images = np.array(
