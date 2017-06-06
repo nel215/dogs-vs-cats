@@ -53,6 +53,7 @@ def train_vgg16(n_epoch, gpu, trial):
         optimizer.setup(model)
 
         batch_size = 48
+        y_test = xp.array(y_test).reshape((-1, 1))
         for epoch in range(n_epoch):
             print('epoch:', epoch)
             chainer.using_config('train', True)
@@ -76,9 +77,12 @@ def train_vgg16(n_epoch, gpu, trial):
             for start in range(0, n_test, batch_size):
                 end = min(n_test, start + batch_size)
                 pred[start:end] = model(xp.array(X_test[start:end])).data
-            loss = F.sigmoid_cross_entropy(
-                pred, xp.array(y_test).reshape((-1, 1)))
+            loss = F.sigmoid_cross_entropy(pred, y_test)
             print("test loss:", loss.data)
+
+        if gpu is not None:
+            pred = chainer.cuda.to_cpu(pred)
+        return pred
 
     images, labels = dogs_vs_cats.load_images('./dataset/train/', trial)
     labels = np.array(labels, dtype=np.int32)
@@ -86,8 +90,11 @@ def train_vgg16(n_epoch, gpu, trial):
     images = np.array(
         list(map(L.model.vision.vgg.prepare, images)), dtype=np.float32)
 
+    cv_pred = np.zeros(len(labels))
     skf = StratifiedKFold(n_splits=3, random_state=215)
     for train_idx, test_idx in skf.split(images, labels):
         X_train, X_test = images[train_idx], images[test_idx]
         y_train, y_test = labels[train_idx], labels[test_idx]
-        train(X_train, X_test, y_train, y_test)
+        pred = train(X_train, X_test, y_train, y_test)
+        cv_pred[test_idx] = pred.reshape(len(pred))
+    print(cv_pred)
