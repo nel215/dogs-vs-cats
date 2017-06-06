@@ -37,7 +37,7 @@ def binarize_label(label):
     return 1 if label == 'dog' else 0
 
 
-def train_vgg16(gpu, trial):
+def train_vgg16(n_epoch, gpu, trial):
     def train(X_train, X_test, y_train, y_test):
         n_train = len(X_train)
         n_test = len(X_test)
@@ -53,7 +53,8 @@ def train_vgg16(gpu, trial):
         optimizer.setup(model)
 
         batch_size = 48
-        for epoch in range(100):
+        for epoch in range(n_epoch):
+            print('epoch:', epoch)
             chainer.using_config('train', True)
             perm = np.random.permutation(n_train)
             train_loss = []

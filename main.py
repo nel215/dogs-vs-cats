@@ -11,4 +11,5 @@ if __name__ == '__main__':
                         action='store_true')
     args = parser.parse_args()
 
-    dogs_vs_cats.train_vgg16(args.gpu, args.trial)
+    n_epoch = 20
+    dogs_vs_cats.train_vgg16(n_epoch, args.gpu, args.trial)
