@@ -13,27 +13,36 @@ from chainer import Variable
 from chainer.optimizers import SGD
 
 
-def load_images(img_dir, trial):
+def load_metadata(img_dir, trial):
     '''
-    Returns:
-        - images: Array of PIL.image
-        - metadata: pandas.DataFrame
+    Returns: metadata: pandas.DataFrame
     '''
-    images, metadata = [], []
+    metadata = []
     files = np.random.permutation(os.listdir(img_dir))
     if trial:
         files = files[:48 * 3]
     for fname in files:
         label = fname.split('.')[0]
         fpath = os.path.join(img_dir, fname)
+        metadata.append([binarize_label(label), fname, fpath])
+
+    metadata = pd.DataFrame(metadata,
+                            columns=['label', 'filename', 'filepath'])
+
+    return metadata
+
+
+def load_images(filepaths):
+    '''
+    Returns: images: Array of PIL.image
+    '''
+    images = []
+    for fpath in filepaths:
         img = Image.open(fpath)
         images.append(img.copy())
-        metadata.append([binarize_label(label), fname])
         img.close()
 
-    metadata = pd.DataFrame(metadata, columns=['label', 'filename'])
-
-    return images, metadata
+    return images
 
 
 def binarize_label(label):
@@ -65,7 +74,9 @@ def train_vgg16(n_epoch, gpu, trial):
             for start in range(0, n_train, batch_size):
                 end = min(n_train, start + batch_size)
                 model.cleargrads()
-                X = Variable(xp.array(X_train[perm[start:end]]))
+                images = load_images(X_train[perm[start:end]])
+                X = Variable(xp.array(list(map(
+                    L.model.vision.vgg.prepare, images)), dtype=np.float32))
                 y = xp.array(y_train[perm[start:end]]).reshape((-1, 1))
                 pred = model(X)
                 loss = F.sigmoid_cross_entropy(pred, y)
@@ -79,7 +90,10 @@ def train_vgg16(n_epoch, gpu, trial):
             pred = xp.zeros((n_test, 1), dtype=np.float32)
             for start in range(0, n_test, batch_size):
                 end = min(n_test, start + batch_size)
-                pred[start:end] = model(xp.array(X_test[start:end])).data
+                images = load_images(X_test[start:end])
+                X = xp.array(list(map(
+                    L.model.vision.vgg.prepare, images)), dtype=np.float32)
+                pred[start:end] = model(X).data
             loss = F.sigmoid_cross_entropy(pred, y_test)
             print("test loss:", loss.data)
 
@@ -87,16 +101,14 @@ def train_vgg16(n_epoch, gpu, trial):
             pred = chainer.cuda.to_cpu(pred)
         return pred
 
-    images, metadata = dogs_vs_cats.load_images('./dataset/train/', trial)
+    metadata = load_metadata('./dataset/train/', trial)
+    filepaths = np.array(metadata['filepath'])
     labels = np.array(metadata['label'], dtype=np.int32)
-
-    images = np.array(
-        list(map(L.model.vision.vgg.prepare, images)), dtype=np.float32)
 
     cv_pred = np.zeros(len(labels))
     skf = StratifiedKFold(n_splits=3, random_state=215)
-    for train_idx, test_idx in skf.split(images, labels):
-        X_train, X_test = images[train_idx], images[test_idx]
+    for train_idx, test_idx in skf.split(filepaths, labels):
+        X_train, X_test = filepaths[train_idx], filepaths[test_idx]
         y_train, y_test = labels[train_idx], labels[test_idx]
         pred = train(X_train, X_test, y_train, y_test)
         cv_pred[test_idx] = pred.reshape(len(pred))
