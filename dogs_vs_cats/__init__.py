@@ -108,10 +108,11 @@ class CVPredictionTask(object):
                 self._train_once(
                     model, optimizer, X_train, y_train, batch_size)
 
-                chainer.using_config('train', False)
-                pred = self._predict(model, X_test, batch_size)
-                loss = F.sigmoid_cross_entropy(pred, y_test)
-                print("test loss:", loss.data)
+                with chainer.no_backprop_mode():
+                    chainer.using_config('train', False)
+                    pred = self._predict(model, X_test, batch_size)
+                    loss = F.sigmoid_cross_entropy(pred, y_test)
+                    print("test loss:", loss.data)
 
             if self.gpu is not None:
                 pred = chainer.cuda.to_cpu(pred)
