@@ -22,10 +22,17 @@ if __name__ == '__main__':
         args.batchsize,
         args.cv,
     )
-    output_path = 'vgg-cv-prediction.csv'
+    output_path = []
+    output_path.append('vgg')
+    if args.cv:
+        output_path.append('cv')
+    output_path.append('prediction')
+    if args.trial:
+        output_path.append('trial')
+
     n_epoch = 20
     if args.trial:
         n_epoch = 2
-        output_path = 'vgg-cv-prediction-trial.csv'
+    output_path = '-'.join(output_path) + '.csv'
     vgg_result = task.run(n_epoch, args.trial)
     vgg_result.to_csv(output_path, index=False)
