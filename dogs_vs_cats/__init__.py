@@ -49,7 +49,7 @@ def binarize_label(label):
     return 1 if label == 'dog' else 0
 
 
-class CVPredictionTask(object):
+class PredictionTask(object):
     def __init__(self, gpu):
         self.xp = cp if gpu is not None else np
         self.gpu = gpu
