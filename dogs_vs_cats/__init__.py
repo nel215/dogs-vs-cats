@@ -50,10 +50,11 @@ def binarize_label(label):
 
 
 class PredictionTask(object):
-    def __init__(self, gpu, batch_size):
+    def __init__(self, gpu, batch_size, cv):
         self.xp = cp if gpu is not None else np
         self.gpu = gpu
         self.batch_size = batch_size
+        self.cv = cv
 
     def _create_model(self):
         if self.gpu is not None:
@@ -120,17 +121,18 @@ class PredictionTask(object):
                 pred = chainer.cuda.to_cpu(pred)
             return pred
 
-        metadata = load_metadata('./dataset/train/', trial)
-        filepaths = np.array(metadata['filepath'])
-        labels = np.array(metadata['label'], dtype=np.int32)
+        if self.cv:
+            metadata = load_metadata('./dataset/train/', trial)
+            filepaths = np.array(metadata['filepath'])
+            labels = np.array(metadata['label'], dtype=np.int32)
 
-        cv_pred = np.zeros(len(labels))
-        skf = StratifiedKFold(n_splits=3, random_state=215)
-        for train_idx, test_idx in skf.split(filepaths, labels):
-            X_train, X_test = filepaths[train_idx], filepaths[test_idx]
-            y_train, y_test = labels[train_idx], labels[test_idx]
-            pred = train(X_train, X_test, y_train, y_test)
-            cv_pred[test_idx] = pred.reshape(len(pred))
-        metadata['vgg_pred'] = cv_pred
+            cv_pred = np.zeros(len(labels))
+            skf = StratifiedKFold(n_splits=3, random_state=215)
+            for train_idx, test_idx in skf.split(filepaths, labels):
+                X_train, X_test = filepaths[train_idx], filepaths[test_idx]
+                y_train, y_test = labels[train_idx], labels[test_idx]
+                pred = train(X_train, X_test, y_train, y_test)
+                cv_pred[test_idx] = pred.reshape(len(pred))
+            metadata['vgg_pred'] = cv_pred
 
-        return metadata
+            return metadata

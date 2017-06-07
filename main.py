@@ -8,6 +8,8 @@ if __name__ == '__main__':
     parser.add_argument('--gpu', help='the id of gpu', type=int)
     parser.add_argument('--batchsize',
                         help='the batchsize id mini-batch', type=int)
+    parser.add_argument('--cv', help='run cv prediction task or not',
+                        action='store_true')
     parser.add_argument('--trial', help='the flag of trial run',
                         action='store_true')
     args = parser.parse_args()
@@ -18,6 +20,7 @@ if __name__ == '__main__':
     task = dogs_vs_cats.PredictionTask(
         args.gpu,
         args.batchsize,
+        args.cv,
     )
     output_path = 'vgg-cv-prediction.csv'
     n_epoch = 20
