@@ -50,9 +50,10 @@ def binarize_label(label):
 
 
 class PredictionTask(object):
-    def __init__(self, gpu):
+    def __init__(self, gpu, batch_size):
         self.xp = cp if gpu is not None else np
         self.gpu = gpu
+        self.batch_size = batch_size
 
     def _create_model(self):
         if self.gpu is not None:
@@ -60,7 +61,8 @@ class PredictionTask(object):
         else:
             return dogs_vs_cats.model.VGG16()
 
-    def _train_once(self, model, optimizer, X_train, y_train, batch_size):
+    def _train_once(self, model, optimizer, X_train, y_train):
+        batch_size = self.batch_size
         xp = self.xp
         n_train = len(X_train)
         perm = np.random.permutation(n_train)
@@ -79,7 +81,8 @@ class PredictionTask(object):
             optimizer.update()
         print("train loss:", np.mean(train_loss))
 
-    def _predict(self, model, X_test, batch_size):
+    def _predict(self, model, X_test):
+        batch_size = self.batch_size
         xp = self.xp
         n_test = len(X_test)
         pred = xp.zeros((n_test, 1), dtype=np.float32)
@@ -100,17 +103,16 @@ class PredictionTask(object):
             optimizer = SGD(lr=0.001)
             optimizer.setup(model)
 
-            batch_size = 64
             y_test = xp.array(y_test).reshape((-1, 1))
             for epoch in range(n_epoch):
                 print('epoch:', epoch)
                 chainer.using_config('train', True)
                 self._train_once(
-                    model, optimizer, X_train, y_train, batch_size)
+                    model, optimizer, X_train, y_train)
 
                 with chainer.no_backprop_mode():
                     chainer.using_config('train', False)
-                    pred = self._predict(model, X_test, batch_size)
+                    pred = self._predict(model, X_test)
                     loss = F.sigmoid_cross_entropy(pred, y_test)
                     print("test loss:", loss.data)
 

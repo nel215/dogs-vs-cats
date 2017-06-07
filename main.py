@@ -6,11 +6,18 @@ import argparse
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', help='the id of gpu', type=int)
+    parser.add_argument('--batchsize', help='the id of gpu', type=int)
     parser.add_argument('--trial', help='the flag of trial run',
                         action='store_true')
     args = parser.parse_args()
 
-    task = dogs_vs_cats.PredictionTask(args.gpu)
+    if args.batchsize is None:
+        args.batchsize = 64
+
+    task = dogs_vs_cats.PredictionTask(
+        args.gpu,
+        args.batchsize,
+    )
     output_path = 'vgg-cv-prediction.csv'
     n_epoch = 20
     if args.trial:
