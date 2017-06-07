@@ -13,7 +13,7 @@ from chainer import Variable
 from chainer.optimizers import SGD
 
 
-def load_metadata(img_dir, trial):
+def load_train_metadata(img_dir, trial):
     '''
     Returns: metadata: pandas.DataFrame
     '''
@@ -28,6 +28,23 @@ def load_metadata(img_dir, trial):
 
     metadata = pd.DataFrame(metadata,
                             columns=['label', 'filename', 'filepath'])
+
+    return metadata
+
+
+def load_test_metadata(img_dir, trial):
+    '''
+    Returns: metadata: pandas.DataFrame
+    '''
+    metadata = []
+    files = np.random.permutation(os.listdir(img_dir))
+    if trial:
+        files = files[:48 * 3]
+    for fname in files:
+        fpath = os.path.join(img_dir, fname)
+        metadata.append([fname, fpath])
+
+    metadata = pd.DataFrame(metadata, columns=['filename', 'filepath'])
 
     return metadata
 
@@ -104,7 +121,8 @@ class PredictionTask(object):
             optimizer = SGD(lr=0.001)
             optimizer.setup(model)
 
-            y_test = xp.array(y_test).reshape((-1, 1))
+            if self.cv:
+                y_test = xp.array(y_test).reshape((-1, 1))
             for epoch in range(n_epoch):
                 print('epoch:', epoch)
                 chainer.using_config('train', True)
@@ -114,15 +132,16 @@ class PredictionTask(object):
                 with chainer.no_backprop_mode():
                     chainer.using_config('train', False)
                     pred = self._predict(model, X_test)
-                    loss = F.sigmoid_cross_entropy(pred, y_test)
-                    print("test loss:", loss.data)
+                    if self.cv:
+                        loss = F.sigmoid_cross_entropy(pred, y_test)
+                        print("test loss:", loss.data)
 
             if self.gpu is not None:
                 pred = chainer.cuda.to_cpu(pred)
             return pred
 
         if self.cv:
-            metadata = load_metadata('./dataset/train/', trial)
+            metadata = load_train_metadata('./dataset/train/', trial)
             filepaths = np.array(metadata['filepath'])
             labels = np.array(metadata['label'], dtype=np.int32)
 
@@ -136,3 +155,12 @@ class PredictionTask(object):
             metadata['vgg_pred'] = cv_pred
 
             return metadata
+        else:
+            train_metadata = load_train_metadata('./dataset/train/', trial)
+            test_metadata = load_test_metadata('./dataset/test/', trial)
+            X_train = np.array(train_metadata['filepath'])
+            y_train = np.array(train_metadata['label'], dtype=np.int32)
+            X_test = np.array(test_metadata['filepath'])
+            y_pred = train(X_train, X_test, y_train, None)
+            test_metadata['vgg_pred'] = y_pred.reshape(len(y_pred))
+            return test_metadata
