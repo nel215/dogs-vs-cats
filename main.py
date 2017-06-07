@@ -10,11 +10,11 @@ if __name__ == '__main__':
                         action='store_true')
     args = parser.parse_args()
 
-    task = dogs_vs_cats.CVPredictionTask()
+    task = dogs_vs_cats.CVPredictionTask(args.gpu)
     output_path = 'vgg-cv-prediction.csv'
     n_epoch = 20
     if args.trial:
         n_epoch = 2
         output_path = 'vgg-cv-prediction-trial.csv'
-    vgg_result = task.train_vgg16(n_epoch, args.gpu, args.trial)
+    vgg_result = task.train_vgg16(n_epoch, args.trial)
     vgg_result.to_csv(output_path, index=False)

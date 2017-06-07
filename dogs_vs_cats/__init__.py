@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import pandas as pd
-import cupy
+import cupy as cp
 import chainer
 import chainer.links as L
 import chainer.functions as F
@@ -50,17 +50,52 @@ def binarize_label(label):
 
 
 class CVPredictionTask(object):
-    def train_vgg16(self, n_epoch, gpu, trial):
-        def train(X_train, X_test, y_train, y_test):
-            n_train = len(X_train)
-            n_test = len(X_test)
+    def __init__(self, gpu):
+        self.xp = cp if gpu is not None else np
+        self.gpu = gpu
 
-            if gpu is not None:
-                xp = cupy
-                model = dogs_vs_cats.model.VGG16().to_gpu()
-            else:
-                xp = np
-                model = dogs_vs_cats.model.VGG16()
+    def _create_model(self):
+        if self.gpu is not None:
+            return dogs_vs_cats.model.VGG16().to_gpu()
+        else:
+            return dogs_vs_cats.model.VGG16()
+
+    def _train_once(self, model, optimizer, X_train, y_train, batch_size):
+        xp = self.xp
+        n_train = len(X_train)
+        perm = np.random.permutation(n_train)
+        train_loss = []
+        for start in range(0, n_train, batch_size):
+            end = min(n_train, start + batch_size)
+            model.cleargrads()
+            images = load_images(X_train[perm[start:end]])
+            images = list(map(L.model.vision.vgg.prepare, images))
+            X = Variable(xp.array(images, dtype=np.float32))
+            y = xp.array(y_train[perm[start:end]]).reshape((-1, 1))
+            pred = model(X)
+            loss = F.sigmoid_cross_entropy(pred, y)
+            train_loss.append(float(loss.data.copy()))
+            loss.backward()
+            optimizer.update()
+        print("train loss:", np.mean(train_loss))
+
+    def _predict(self, model, X_test, batch_size):
+        xp = self.xp
+        n_test = len(X_test)
+        pred = xp.zeros((n_test, 1), dtype=np.float32)
+        for start in range(0, n_test, batch_size):
+            end = min(n_test, start + batch_size)
+            images = load_images(X_test[start:end])
+            X = xp.array(list(map(
+                L.model.vision.vgg.prepare, images)), dtype=np.float32)
+            pred[start:end] = model(X).data
+        return pred
+
+    def train_vgg16(self, n_epoch, trial):
+        def train(X_train, X_test, y_train, y_test):
+            xp = self.xp
+
+            model = self._create_model()
 
             optimizer = SGD(lr=0.001)
             optimizer.setup(model)
@@ -70,35 +105,15 @@ class CVPredictionTask(object):
             for epoch in range(n_epoch):
                 print('epoch:', epoch)
                 chainer.using_config('train', True)
-                perm = np.random.permutation(n_train)
-                train_loss = []
-                for start in range(0, n_train, batch_size):
-                    end = min(n_train, start + batch_size)
-                    model.cleargrads()
-                    images = load_images(X_train[perm[start:end]])
-                    images = list(map(L.model.vision.vgg.prepare, images))
-                    X = Variable(xp.array(images, dtype=np.float32))
-                    y = xp.array(y_train[perm[start:end]]).reshape((-1, 1))
-                    pred = model(X)
-                    loss = F.sigmoid_cross_entropy(pred, y)
-                    train_loss.append(float(loss.data.copy()))
-                    loss.backward()
-                    optimizer.update()
-                print("train loss:", np.mean(train_loss))
+                self._train_once(
+                    model, optimizer, X_train, y_train, batch_size)
 
-                # validation
                 chainer.using_config('train', False)
-                pred = xp.zeros((n_test, 1), dtype=np.float32)
-                for start in range(0, n_test, batch_size):
-                    end = min(n_test, start + batch_size)
-                    images = load_images(X_test[start:end])
-                    X = xp.array(list(map(
-                        L.model.vision.vgg.prepare, images)), dtype=np.float32)
-                    pred[start:end] = model(X).data
+                pred = self._predict(model, X_test, batch_size)
                 loss = F.sigmoid_cross_entropy(pred, y_test)
                 print("test loss:", loss.data)
 
-            if gpu is not None:
+            if self.gpu is not None:
                 pred = chainer.cuda.to_cpu(pred)
             return pred
 
