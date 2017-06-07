@@ -100,7 +100,7 @@ class CVPredictionTask(object):
             optimizer = SGD(lr=0.001)
             optimizer.setup(model)
 
-            batch_size = 48
+            batch_size = 64
             y_test = xp.array(y_test).reshape((-1, 1))
             for epoch in range(n_epoch):
                 print('epoch:', epoch)
