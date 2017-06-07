@@ -16,5 +16,5 @@ if __name__ == '__main__':
     if args.trial:
         n_epoch = 2
         output_path = 'vgg-cv-prediction-trial.csv'
-    vgg_result = task.train_vgg16(n_epoch, args.trial)
+    vgg_result = task.run(n_epoch, args.trial)
     vgg_result.to_csv(output_path, index=False)

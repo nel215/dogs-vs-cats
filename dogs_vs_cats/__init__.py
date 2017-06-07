@@ -91,7 +91,7 @@ class CVPredictionTask(object):
             pred[start:end] = model(X).data
         return pred
 
-    def train_vgg16(self, n_epoch, trial):
+    def run(self, n_epoch, trial):
         def train(X_train, X_test, y_train, y_test):
             xp = self.xp
 
